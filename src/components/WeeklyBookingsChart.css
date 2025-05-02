@@ -1,0 +1,51 @@
+.weekly-bookings-chart-container {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.recharts-wrapper {
+  height: 300px;
+}
+
+.recharts-cartesian-grid {
+  stroke: #eee;
+}
+
+.recharts-xAxis {
+  fill: #666;
+}
+
+.recharts-yAxis {
+  fill: #666;
+}
+
+.recharts-line {
+  stroke: #007bff;
+  stroke-width: 2;
+}
+
+.recharts-circle {
+  fill: #007bff;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+}
+
+.error-message {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+}

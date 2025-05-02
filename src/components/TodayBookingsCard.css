@@ -1,0 +1,49 @@
+.today-bookings-card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease;
+}
+
+.today-bookings-card:hover {
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.calendar-icon {
+  font-size: 20px;
+  color: #007bff;
+}
+
+.card-label {
+  font-weight: 500;
+}
+
+.card-body {
+  text-align: center;
+  padding-top: 10px;
+}
+
+.booking-count {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+}
+
+.loading {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}

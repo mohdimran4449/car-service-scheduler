@@ -1,0 +1,28 @@
+{
+  "name": "car-service-scheduler",
+  "version": "1.0.0",
+  "description": "AI-powered car service scheduling system with Exotel integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo \"No build needed\""
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^7.6.3",
+    "openai": "^4.24.1",
+    "twilio": "^4.12.0",
+    "google-tts-api": "^1.0.0",
+    "@google-cloud/speech": "^5.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1",
+    "nodemon": "^3.0.1"
+  }
+}
