@@ -14,11 +14,14 @@ const app = express();
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());
+app.use(express.static('public'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Home page route will be handled by the static middleware
 
 // MongoDB connection
 const connectDB = async () => {
