@@ -1,8 +1,11 @@
 const googleTTS = require('google-tts-api');
 const { SpeechClient } = require('@google-cloud/speech');
+const path = require('path');
 
-// Initialize Speech-to-Text client
-const speechClient = new SpeechClient();
+// Initialize Speech-to-Text client with credentials
+const speechClient = new SpeechClient({
+  keyFilename: path.join(__dirname, 'google-credentials.json')
+});
 
 // Time slots in Hindi
 const timeSlots = {
