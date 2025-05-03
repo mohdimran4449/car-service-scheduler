@@ -190,13 +190,13 @@ const Status = () => {
           {status.loading ? (
             <p>Loading status...</p>
           ) : (
-            <>
+            <div>
               <p>
                 <span className={`status-indicator ${status.dbConnected ? 'status-online' : 'status-offline'}`}></span>
                 Database: {status.dbConnected ? 'Connected' : 'Disconnected'}
               </p>
               <p>Server Time: {status.serverTime}</p>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -242,14 +242,14 @@ const Footer = () => {
 // Main App Component
 const App = () => {
   return (
-    <>
+    <div className="app-container">
       <Header />
       <Hero />
       <Features />
       <ApiDocs />
       <Status />
       <Footer />
-    </>
+    </div>
   );
 };
 
