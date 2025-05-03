@@ -4,6 +4,10 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -16,6 +20,30 @@
       "dest": "/server.js"
     },
     {
+      "src": "/health",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/styles.css",
+      "dest": "/public/styles.css"
+    },
+    {
+      "src": "/app.js",
+      "dest": "/public/app.js"
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/public/favicon.ico"
+    },
+    {
+      "src": "/favicon.svg",
+      "dest": "/public/favicon.svg"
+    },
+    {
+      "src": "/",
+      "dest": "/public/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server.js"
     }
@@ -26,14 +54,8 @@
     "EXOTEL_TOKEN": "${EXOTEL_TOKEN}",
     "EXOTEL_FROM_NUMBER": "${EXOTEL_FROM_NUMBER}",
     "OPENAI_API_KEY": "${OPENAI_API_KEY}",
-    "GOOGLE_CALENDAR_API_KEY": "${GOOGLE_CALENDAR_API_KEY}",
     "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}",
     "BASE_URL": "${BASE_URL}",
     "PORT": "${PORT}"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
   }
 }
