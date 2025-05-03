@@ -31,7 +31,6 @@
     "PORT": "@PORT"
   },
   "build": {
-    "command": "npm install",
     "env": {
       "NODE_ENV": "production"
     }
