@@ -811,7 +811,8 @@ app.post('/handle-confirmation', async (req, res) => {
           "FinishOnKey": "#",
           "CallbackUrl": `${process.env.BASE_URL}/handle-time-slot`
         }
-      };
+      }
+    };
     res.json(response);
   }
 });
