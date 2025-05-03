@@ -526,7 +526,22 @@ app.post('/handle-incoming-call', async (req, res) => {
 // Handle voice input and process with GPT-4
 app.post('/handle-voice-input', async (req, res) => {
   try {
+    // Validate required parameters
     const { CallSid, From, To, RecordingUrl } = req.body;
+    
+    if (!CallSid || !RecordingUrl) {
+      return res.status(400).json({
+        error: 'Missing required parameters'
+      });
+    }
+
+    // Validate phone numbers
+    const phoneRegex = /^[+]?[1-9]\d{1,14}$/;
+    if (From && To && (!phoneRegex.test(From) || !phoneRegex.test(To))) {
+      return res.status(400).json({
+        error: 'Invalid phone number format'
+      });
+    }
 
     // Get audio recording from RecordingUrl
     const recording = await axios.get(RecordingUrl, { responseType: 'arraybuffer' });
@@ -542,8 +557,8 @@ app.post('/handle-voice-input', async (req, res) => {
       languageCode: 'hi-IN',
     };
 
-    const [response] = await speechClient.recognize({ audio, config });
-    const transcription = response.results
+    const speechResponse = await speechClient.recognize({ audio, config });
+    const transcription = speechResponse.results
       .map(result => result.alternatives[0].transcript)
       .join('\n');
 
@@ -604,87 +619,7 @@ app.post('/handle-voice-input', async (req, res) => {
     const audioUrl = await saveAudioToFile(audioResponse.audioContent);
 
     // Send response to caller
-    const response = {
-      "Response": {
-        "Play": {
-          "Url": audioUrl
-        },
-        "Record": {
-          "Action": "hangup",
-          "Method": "POST",
-          "Url": `${process.env.BASE_URL}/handle-voice-input`
-        }
-      }
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error('Error handling voice input:', error);
-    res.status(500).json({ error: 'Failed to process voice input' });
-  }
-});
-
-// Handle voice input and process with GPT-4
-app.post('/handle-voice-input', async (req, res) => {
-  try {
-    const { CallSid, From, To, RecordingUrl } = req.body;
-
-    // Get audio recording from RecordingUrl
-    const recording = await axios.get(RecordingUrl, { responseType: 'arraybuffer' });
-
-    // Convert audio to text using Google Speech-to-Text
-    const audioBytes = Buffer.from(recording.data);
-    const audio = {
-      content: audioBytes.toString('base64'),
-    };
-    const config = {
-      encoding: 'LINEAR16',
-      sampleRateHertz: 8000,
-      languageCode: 'hi-IN',
-    };
-
-    const [response] = await speechClient.recognize({ audio, config });
-    const transcription = response.results
-      .map(result => result.alternatives[0].transcript)
-      .join('\n');
-
-    // Add to conversation history
-    conversationHistory.push({
-      role: 'user',
-      content: transcription
-    });
-
-    // Generate response using GPT-4
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: conversationHistory,
-      temperature: 0.7,
-      max_tokens: 150
-    });
-
-    const aiResponse = completion.choices[0].message.content;
-
-    // Add AI response to conversation history
-    conversationHistory.push({
-      role: 'assistant',
-      content: aiResponse
-    });
-
-    // Convert text to speech
-    const [audioResponse] = await textToSpeechClient.synthesizeSpeech({
-      input: { text: aiResponse },
-      voice: { 
-        languageCode: 'hi-IN',
-        ssmlGender: 'FEMALE'
-      },
-      audioConfig: { audioEncoding: 'MP3' }
-    });
-
-    // Save audio to file and get URL
-    const audioUrl = await saveAudioToFile(audioResponse.audioContent);
-
-    // Send response to caller
-    const response = {
+    const exotelResponse = {
       "Response": {
         "Play": {
           "Url": audioUrl
@@ -696,7 +631,7 @@ app.post('/handle-voice-input', async (req, res) => {
       }
     };
 
-    res.json(response);
+    res.json(exotelResponse);
   } catch (error) {
     console.error('Error handling voice input:', error);
     res.status(500).json({ error: 'Failed to process voice input' });
