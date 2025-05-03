@@ -23,9 +23,16 @@ app.get('/health', (req, res) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const uri = process.env.MONGODB_URI;
+    let uri = process.env.MONGODB_URI;
     if (!uri) {
-      throw new Error('Please add your Mongo URI to environment variables');
+      console.error('MongoDB URI not found in environment variables');
+      // Use a fallback for development or handle gracefully
+      uri = 'mongodb://localhost:27017/car-service';
+    }
+    
+    // Validate MongoDB URI format
+    if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+      throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://');
     }
     
     await mongoose.connect(uri, {
@@ -36,7 +43,12 @@ const connectDB = async () => {
     console.log('MongoDB connected successfully');
   } catch (err) {
     console.error('MongoDB connection error:', err);
-    process.exit(1);
+    // Don't exit the process in production, handle gracefully
+    if (process.env.NODE_ENV === 'production') {
+      console.error('Application will continue without database connection');
+    } else {
+      process.exit(1);
+    }
   }
 };
 
