@@ -44,40 +44,7 @@ const connectDB = async () => {
 connectDB();
 
 // Models
-const Interaction = mongoose.model('Interaction', new mongoose.Schema({
-  callSid: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  customerText: String,
-  aiResponse: String,
-  timestamp: {
-    type: Date,
-    default: Date.now
-  }
-}));
-
-const ErrorLog = mongoose.model('ErrorLog', new mongoose.Schema({
-  callSid: {
-    type: String,
-    required: true
-  },
-  errorMessage: {
-    type: String,
-    required: true
-  },
-  context: {
-    type: String,
-    required: true
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now
-  }
-}));
-
-const Booking = mongoose.model('Booking', new mongoose.Schema({
+const BookingSchema = new mongoose.Schema({
   clientId: String,
   name: {
     type: String,
@@ -88,7 +55,7 @@ const Booking = mongoose.model('Booking', new mongoose.Schema({
     required: true,
     validate: {
       validator: function(v) {
-        return /^\+?[1-9]\d{1,14}$/.test(v);
+        return /^[+]?[1-9]\d{1,14}$/.test(v);
       },
       message: 'Please enter a valid phone number'
     }
@@ -132,7 +99,10 @@ const Booking = mongoose.model('Booking', new mongoose.Schema({
   }
 });
 
-const Booking = mongoose.model('Booking', bookingSchema);
+const Booking = mongoose.model('Booking', BookingSchema);
+
+// Import OpenAI
+const OpenAI = require('openai');
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -141,12 +111,6 @@ const openai = new OpenAI({
 
 // Import voice flow
 const { textToSpeech, speechToText, processVoiceFlow } = require('./voice-flow');
-
-// Conversation context
-let conversationHistory = [];
-
-// Initialize Google Cloud clients
-const speechClient = new SpeechClient();
 
 // Initialize Exotel
 const Exotel = require('exotel');
@@ -157,16 +121,6 @@ const exotelWebhook = require('./exotel-webhook');
 
 // Use Exotel webhook routes
 app.use('/exotel', exotelWebhook);
-
-// Available time slots
-const timeSlots = {
-  '1': '9:00 AM - 10:00 AM',
-  '2': '10:00 AM - 11:00 AM',
-  '3': '11:00 AM - 12:00 PM',
-  '4': '2:00 PM - 3:00 PM',
-  '5': '3:00 PM - 4:00 PM',
-  '6': '4:00 PM - 5:00 PM'
-};
 
 // API Routes
 
@@ -213,23 +167,35 @@ app.post('/api/bookings', async (req, res) => {
 app.get('/api/bookings', async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .sort({ createdAt: -1 })
-      .populate('carDetails');
+      .sort({ createdAt: -1 });
 
     res.json(bookings);
   } catch (error) {
     console.error('Error fetching bookings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch bookings'
-    });
+    if (error.name === 'MongoError') {
+      res.status(500).json({
+        error: 'Database error occurred'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to fetch bookings'
+      });
+    }
   }
 });
 
 // Get a specific booking
 app.get('/api/bookings/:id', async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('carDetails');
+    // Validate booking ID format
+    const bookingId = req.params.id;
+    if (!bookingId || typeof bookingId !== 'string' || !bookingId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        error: 'Invalid booking ID format'
+      });
+    }
+
+    const booking = await Booking.findById(bookingId);
 
     if (!booking) {
       return res.status(404).json({
@@ -315,6 +281,13 @@ app.get('/api/bookings/status/:status', async (req, res) => {
 // Get today's bookings
 app.get('/api/bookings/today', async (req, res) => {
   try {
+    // Validate MongoDB connection
+    if (!mongoose.connection.readyState) {
+      return res.status(500).json({
+        error: 'Database connection error'
+      });
+    }
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();
@@ -325,16 +298,20 @@ app.get('/api/bookings/today', async (req, res) => {
         $gte: startOfDay,
         $lte: endOfDay
       }
-    })
-    .sort({ preferredTimeSlot: 1 })
-    .populate('carDetails');
+    }).sort({ preferredTimeSlot: 1 });
 
     res.json(bookings);
   } catch (error) {
     console.error('Error fetching today\'s bookings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch bookings'
-    });
+    if (error.name === 'MongoError') {
+      res.status(500).json({
+        error: 'Database error occurred'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to fetch today\'s bookings'
+      });
+    }
   }
 });
 
@@ -465,6 +442,20 @@ app.post('/make-call', async (req, res) => {
   try {
     const { phoneNumber } = req.body;
     
+    // Validate phone number
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+      return res.status(400).json({
+        error: 'Phone number is required'
+      });
+    }
+
+    const phoneRegex = /^[+]?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      return res.status(400).json({
+        error: 'Invalid phone number format'
+      });
+    }
+
     // Make outbound call
     const call = await exotel.calls.create({
       From: process.env.EXOTEL_FROM_NUMBER,
@@ -476,6 +467,11 @@ app.post('/make-call', async (req, res) => {
     res.json({ success: true, callSid: call.CallSid });
   } catch (error) {
     console.error('Error making call:', error);
+    if (error.response && error.response.status === 400) {
+      return res.status(400).json({
+        error: error.response.data || 'Invalid phone number'
+      });
+    }
     res.status(500).json({ error: 'Failed to make call' });
   }
 });
@@ -485,6 +481,20 @@ app.post('/handle-incoming-call', async (req, res) => {
   try {
     const { From, To } = req.body;
     
+    // Validate phone numbers
+    if (!From || !To) {
+      return res.status(400).json({
+        error: 'Missing phone numbers'
+      });
+    }
+
+    const phoneRegex = /^[+]?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(From) || !phoneRegex.test(To)) {
+      return res.status(400).json({
+        error: 'Invalid phone number format'
+      });
+    }
+
     // Initialize conversation with caller's phone number
     conversationHistory = [{
       role: 'system',
