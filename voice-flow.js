@@ -1,10 +1,11 @@
 const googleTTS = require('google-tts-api');
 const { SpeechClient } = require('@google-cloud/speech');
 const path = require('path');
+const axios = require('axios');
 
 // Initialize Speech-to-Text client with credentials
 const speechClient = new SpeechClient({
-  keyFilename: path.join(__dirname, 'google-credentials.json')
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
 });
 
 // Time slots in Hindi
@@ -17,9 +18,14 @@ const timeSlots = {
   '6': 'पहले दिन 4 बजे'
 };
 
-// Convert text to speech using google-tts-api
+// Convert text to speech using google-tts
 async function textToSpeech(text) {
   try {
+    // Validate input
+    if (!text || typeof text !== 'string') {
+      throw new Error('Invalid text input');
+    }
+
     const audio = await googleTTS.speak(text, {
       lang: 'hi',
       slow: false,
@@ -28,13 +34,18 @@ async function textToSpeech(text) {
     return audio;
   } catch (error) {
     console.error('Error in text-to-speech:', error);
-    throw error;
+    throw new Error('Failed to convert text to speech');
   }
 }
 
 // Convert speech to text using Google Cloud Speech-to-Text
 async function speechToText(audio) {
   try {
+    // Validate input
+    if (!audio || typeof audio !== 'string') {
+      throw new Error('Invalid audio input');
+    }
+
     // Configure the audio encoding and other recognition parameters
     const config = {
       encoding: 'LINEAR16',
@@ -63,13 +74,18 @@ async function speechToText(audio) {
     return transcription;
   } catch (error) {
     console.error('Error in speech-to-text:', error);
-    throw error;
+    throw new Error('Failed to convert speech to text');
   }
 }
 
 // Process voice flow
 async function processVoiceFlow(callData) {
   try {
+    // Validate input
+    if (!callData || typeof callData !== 'object') {
+      throw new Error('Invalid call data');
+    }
+
     // Get current state from call data
     const currentState = callData.state || 'greeting';
     
@@ -102,16 +118,26 @@ async function processVoiceFlow(callData) {
         // Get the selected time slot
         const selectedSlot = timeSlots[callData.digits];
         
+        // Validate time slot selection
+        if (!selectedSlot) {
+          throw new Error('Invalid time slot selected');
+        }
+
         // Create booking
-        await axios.post('/api/bookings', {
-          name: callData.name,
-          contactNumber: callData.contactNumber,
-          carDetails: {
-            model: callData.carModel,
-            registrationNumber: callData.carRegistration
-          },
-          preferredTimeSlot: selectedSlot
-        });
+        try {
+          await axios.post(`${process.env.BASE_URL}/api/bookings`, {
+            name: callData.name,
+            contactNumber: callData.contactNumber,
+            carDetails: {
+              model: callData.carModel,
+              registrationNumber: callData.carRegistration
+            },
+            preferredTimeSlot: selectedSlot
+          });
+        } catch (error) {
+          console.error('Error creating booking:', error);
+          throw new Error('Failed to create booking');
+        }
 
         return {
           text: `Namaste! Aapka booking confirm ho gaya hai!\n\nAapka car service ${selectedSlot} ke liye book ho gaya hai.\n\nDhanyavaad!`,
