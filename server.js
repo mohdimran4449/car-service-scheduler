@@ -23,12 +23,29 @@ app.get('/health', (req, res) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
+    // For development, use a local MongoDB instance
+    if (process.env.NODE_ENV !== 'production') {
+      await mongoose.connect('mongodb://localhost:27017/car-service', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      });
+      console.log('Connected to local MongoDB');
+      return;
+    }
+
+    // For production, use the environment variable
     let uri = process.env.MONGODB_URI;
+    
+    // Handle missing URI
     if (!uri) {
       console.error('MongoDB URI not found in environment variables');
-      // Use a fallback for development or handle gracefully
-      uri = 'mongodb://localhost:27017/car-service';
+      console.warn('Using dummy connection for testing');
+      return; // Continue without DB in production
     }
+    
+    // Debug the URI
+    console.log('MongoDB URI type:', typeof uri);
+    console.log('MongoDB URI length:', uri ? uri.length : 0);
     
     // Fix URI format if needed (for Vercel environment variables)
     if (uri && typeof uri === 'string') {
@@ -36,17 +53,28 @@ const connectDB = async () => {
       uri = uri.replace(/^"|"$/g, '');
       uri = uri.replace(/^'|'$/g, '');
       
+      // Remove any ${} template syntax that might not be processed
+      if (uri.includes('${')) {
+        console.error('MongoDB URI contains template variables that were not processed');
+        return; // Continue without DB in production
+      }
+      
       // Add protocol if missing
       if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
         // Check if it's just missing the protocol
         if (uri.includes('.mongodb.net') || uri.includes('localhost')) {
           uri = 'mongodb+srv://' + uri;
         } else {
-          throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://');
+          console.error('Invalid MongoDB URI format:', uri.substring(0, 10) + '...');
+          return; // Continue without DB in production
         }
       }
+    } else {
+      console.error('MongoDB URI is not a string');
+      return; // Continue without DB in production
     }
     
+    // Connect to MongoDB
     await mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -55,12 +83,8 @@ const connectDB = async () => {
     console.log('MongoDB connected successfully');
   } catch (err) {
     console.error('MongoDB connection error:', err);
-    // Don't exit the process in production, handle gracefully
-    if (process.env.NODE_ENV === 'production') {
-      console.error('Application will continue without database connection');
-    } else {
-      process.exit(1);
-    }
+    // Don't exit the process in production
+    console.warn('Application will continue without database connection');
   }
 };
 

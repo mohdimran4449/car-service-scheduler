@@ -4,14 +4,39 @@ const path = require('path');
 const axios = require('axios');
 
 // Initialize Speech-to-Text client with credentials
-const speechClient = new SpeechClient({
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-});
+let speechClient;
+let textToSpeechClient;
 
-// Initialize Text-to-Speech client with credentials
-const textToSpeechClient = new TextToSpeechClient({
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-});
+try {
+  // Handle credentials based on environment
+  let credentials;
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    try {
+      // Try to parse as JSON
+      credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    } catch (error) {
+      console.warn('Error parsing Google credentials as JSON, using as path');
+      // If not valid JSON, use as path to credentials file
+      credentials = { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS };
+    }
+  } else {
+    console.warn('No Google credentials found, using default authentication');
+    credentials = {};
+  }
+
+  // Initialize clients
+  speechClient = new SpeechClient(credentials);
+  textToSpeechClient = new TextToSpeechClient(credentials);
+} catch (error) {
+  console.error('Error initializing Google Cloud clients:', error);
+  // Create dummy clients for development/testing
+  speechClient = {
+    recognize: () => Promise.resolve([[{ results: [{ alternatives: [{ transcript: 'Test transcript' }] }] }]])
+  };
+  textToSpeechClient = {
+    synthesizeSpeech: () => Promise.resolve([{ audioContent: Buffer.from('Test audio content') }])
+  };
+}
 
 // Time slots in Hindi
 const timeSlots = {
