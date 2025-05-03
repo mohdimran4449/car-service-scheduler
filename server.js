@@ -30,9 +30,21 @@ const connectDB = async () => {
       uri = 'mongodb://localhost:27017/car-service';
     }
     
-    // Validate MongoDB URI format
-    if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
-      throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://');
+    // Fix URI format if needed (for Vercel environment variables)
+    if (uri && typeof uri === 'string') {
+      // Remove quotes if present
+      uri = uri.replace(/^"|"$/g, '');
+      uri = uri.replace(/^'|'$/g, '');
+      
+      // Add protocol if missing
+      if (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://')) {
+        // Check if it's just missing the protocol
+        if (uri.includes('.mongodb.net') || uri.includes('localhost')) {
+          uri = 'mongodb+srv://' + uri;
+        } else {
+          throw new Error('Invalid MongoDB URI format. URI must start with mongodb:// or mongodb+srv://');
+        }
+      }
     }
     
     await mongoose.connect(uri, {
@@ -56,6 +68,7 @@ const connectDB = async () => {
 connectDB();
 
 // Models
+// Check if model already exists to prevent OverwriteModelError
 const BookingSchema = new mongoose.Schema({
   clientId: String,
   name: {
@@ -111,7 +124,8 @@ const BookingSchema = new mongoose.Schema({
   }
 });
 
-const Booking = mongoose.model('Booking', BookingSchema);
+// Prevent model overwrite error
+const Booking = mongoose.models.Booking || mongoose.model('Booking', BookingSchema);
 
 // Import OpenAI
 const OpenAI = require('openai');
