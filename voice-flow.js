@@ -1,10 +1,15 @@
-const googleTTS = require('google-tts-api');
 const { SpeechClient } = require('@google-cloud/speech');
+const { TextToSpeechClient } = require('@google-cloud/text-to-speech');
 const path = require('path');
 const axios = require('axios');
 
 // Initialize Speech-to-Text client with credentials
 const speechClient = new SpeechClient({
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+});
+
+// Initialize Text-to-Speech client with credentials
+const textToSpeechClient = new TextToSpeechClient({
   credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
 });
 
@@ -18,7 +23,7 @@ const timeSlots = {
   '6': 'पहले दिन 4 बजे'
 };
 
-// Convert text to speech using google-tts
+// Convert text to speech using Google Cloud Text-to-Speech
 async function textToSpeech(text) {
   try {
     // Validate input
@@ -26,12 +31,18 @@ async function textToSpeech(text) {
       throw new Error('Invalid text input');
     }
 
-    const audio = await googleTTS.speak(text, {
-      lang: 'hi',
-      slow: false,
-      host: 'https://translate.google.com'
-    });
-    return audio;
+    const request = {
+      input: { text },
+      voice: { languageCode: 'hi-IN', ssmlGender: 'NEUTRAL' },
+      audioConfig: { audioEncoding: 'MP3' }
+    };
+
+    const [response] = await textToSpeechClient.synthesizeSpeech(request);
+    if (!response || !response.audioContent) {
+      throw new Error('No audio content generated');
+    }
+
+    return response.audioContent;
   } catch (error) {
     console.error('Error in text-to-speech:', error);
     throw new Error('Failed to convert text to speech');
